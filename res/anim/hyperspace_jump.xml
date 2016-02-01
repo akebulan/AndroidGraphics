@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Document   : hyperspace_jump.xml
+    Created on : November 3, 2010, 3:32 PM
+    Author     : lighthammer
+    Description:
+        Purpose of the document follows.
+-->
+
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+    <translate
+            android:interpolator="@android:anim/accelerate_decelerate_interpolator"
+            android:fromXDelta="0"
+            android:toXDelta="400"
+            android:fromYDelta="0"
+            android:toYDelta="0"
+            android:duration="700"
+            android:fillAfter="false" />
+</set>

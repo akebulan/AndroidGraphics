@@ -1,0 +1,148 @@
+\\\\\\\\\\\\\\\\\\\\\\\\ TEXTURE PLANE
+
+	float coords[] = {
+		-1.0f, 1.0f, 0.0f, // 0, Top Left
+		-1.0f, 0.0f, 0.0f, // 1, Bottom Left
+		0.0f, 0.0f, 0.0f, // 2, Bottom Right
+		0.0f, 1.0f, 0.0f, // 3, Top Right
+	};
+
+	short[] icoords = {0, 1, 2, 0, 2, 3};
+
+	float[] tex = {0, 0,
+		0, 1,
+		1, 1,
+		1, 0};
+
+     // used to make native order float buffers
+    private FloatBuffer makeFloatBuffer(float[] arr) {
+        ByteBuffer bb = ByteBuffer.allocateDirect(arr.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        FloatBuffer fb = bb.asFloatBuffer();
+        fb.put(arr);
+        fb.position(0);
+        return fb;
+    }
+
+    // used to make native order short buffers
+    private ShortBuffer makeShortBuffer(short[] arr) {
+        ByteBuffer bb = ByteBuffer.allocateDirect(arr.length * 2);
+        bb.order(ByteOrder.nativeOrder());
+        ShortBuffer ib = bb.asShortBuffer();
+        ib.put(arr);
+        ib.position(0);
+        return ib;
+    }
+
+
+///////////////////////////////
+
+///////////////////////////////////// LOAD TEXTURE FROM IMAGE
+
+      	int  textureId = loadTexture(gl, context, R.drawable.flare1);
+
+        private int newTextureID(GL10 gl) {
+            int[] temp = new int[1];
+            gl.glGenTextures(1, temp, 0);
+            return temp[0];
+        }
+
+        // Will load a texture out of a drawable resource file, and return an OpenGL texture ID:
+        private int loadTexture(GL10 gl, Context context, int resource) {
+            // In which ID will we be storing this texture?
+            int id = newTextureID(gl);
+            // We need to flip the textures vertically:
+            Matrix flip = new Matrix();
+            flip.postScale(1f, -1f);
+            // This will tell the BitmapFactory to not scale based on the device's pixel density:
+            // (Thanks to Matthew Marshall for this bit)
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inScaled = false;
+            // Load up, and flip the texture:
+            Bitmap temp = BitmapFactory.decodeResource(context.getResources(), resource, opts);
+            Bitmap bmp = Bitmap.createBitmap(temp, 0, 0, temp.getWidth(), temp.getHeight(), flip, true);
+            temp.recycle();
+            gl.glBindTexture(GL10.GL_TEXTURE_2D, id);
+            // Set all of our texture parameters:
+            gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR_MIPMAP_NEAREST);
+            gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR_MIPMAP_NEAREST);
+            gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S, GL10.GL_REPEAT);
+            gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T, GL10.GL_REPEAT);
+
+            int[] crop = {0, bmp.getWidth(), bmp.getHeight(), -bmp.getHeight()};
+
+            ((GL11) gl).glTexParameteriv(GL10.GL_TEXTURE_2D,
+                    GL11Ext.GL_TEXTURE_CROP_RECT_OES, crop, 0);
+
+
+            // Generate, and load up all of the mipmaps:
+            for (int level = 0, height = bmp.getHeight(), width = bmp.getWidth(); true; level++) {
+                // Push the bitmap onto the GPU:
+                GLUtils.texImage2D(GL10.GL_TEXTURE_2D, level, bmp, 0);
+                // We need to stop when the texture is 1x1:
+                if (height == 1 && width == 1) {
+                    break;
+                }
+                // Resize, and let's go again:
+                width >>= 1;
+                height >>= 1;
+                if (width < 1) {
+                    width = 1;
+                }
+                if (height < 1) {
+                    height = 1;
+                }
+                Bitmap bmp2 = Bitmap.createScaledBitmap(bmp, width, height, true);
+                bmp.recycle();
+                bmp = bmp2;
+            }
+            bmp.recycle();
+            return id;
+        }
+    }
+
+    /////////////////////////////////////
+
+
+  /////////////////// DRAW
+        gl.glFrontFace(GL10.GL_CCW);
+        gl.glEnable(GL10.GL_CULL_FACE);
+        gl.glCullFace(GL10.GL_BACK);
+		gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
+		gl.glEnable(GL10.GL_TEXTURE_2D);
+		gl.glEnable(GL10.GL_TEXTURE);
+		gl.glEnable(GL10.GL_NORMAL_ARRAY);
+		gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
+
+
+		mVertexBuffer = makeFloatBuffer(coords);
+		gl.glVertexPointer(3, GL10.GL_FLOAT, 0, mVertexBuffer);
+
+		mTextureBuffer = makeFloatBuffer(tex);
+		gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, mTextureBuffer);
+
+		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
+		gl.glEnable(gl.GL_BLEND);
+
+		gl.glBindTexture(GL10.GL_TEXTURE_2D, textureId);
+		((GL11Ext) gl).glDrawTexfOES(10, 10, 0, 64, 64);
+
+		mIndexBuffer = makeShortBuffer(icoords);
+	        gl.glDrawElements(GL10.GL_TRIANGLES, icoords.length, GL10.GL_UNSIGNED_SHORT, mIndexBuffer);
+
+		gl.glDisable(GL10.GL_TEXTURE);
+		gl.glDisable(GL10.GL_NORMAL_ARRAY);
+		gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY);
+		gl.glDisable(gl.GL_BLEND);
+		gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
+        gl.glDisable(GL10.GL_CULL_FACE);
+
+
+//////////////////////////////////////
+
+LINKS
+http://webcache.googleusercontent.com/search?q=cache:0z0g0oVIwLkJ:iphonedevelopment.blogspot.com/2009/06/using-3d-models-from-blender-in-opengl.html+opengl+es+load+model&cd=1&hl=en&ct=clnk&gl=us
+http://blog.poweredbytoast.com/loading-opengl-textures-in-android
+http://blog.jayway.com/author/pererikbergman/
+http://webcache.googleusercontent.com/search?q=cache:JfHfizf5EbIJ:www.rozengain.com/blog/2010/05/17/loading-3d-models-with-the-min3d-framework-for-android/+ANDROID+opengl+es+load+model&cd=9&hl=en&ct=clnk&gl=us
+http://www.rozengain.com/blog/2010/05/19/loading-a-3ds-file-min3d-framework-for-android/
